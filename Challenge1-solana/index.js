@@ -49,11 +49,12 @@ var arguments = process.argv;
 // Show the wallet balance before and after airdropping SOL
 const mainFunction = async () => {
 	const thePublicKey = arguments[2];
-	console.log(`2 sol airdropped to ${thePublicKey}`);
 
-	await getWalletBalance("C6t6Pnmc9sxoLiWSVUCYnHPoKwALpbWdMeFp22TGon6P");
+	await getWalletBalance(thePublicKey);
 	await airDropSol(thePublicKey);
-	await getWalletBalance("C6t6Pnmc9sxoLiWSVUCYnHPoKwALpbWdMeFp22TGon6P");
+	await getWalletBalance(thePublicKey);
+
+	console.log(`2 sol airdropped to ${thePublicKey}`);
 };
 
 mainFunction();
