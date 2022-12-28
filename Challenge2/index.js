@@ -31,9 +31,11 @@ const transferSol = async () => {
 	// Get Keypair from Secret Key
 	var from = Keypair.fromSecretKey(DEMO_FROM_SECRET_KEY);
 	console.log("FROM balance : ");
-	getWalletBalance(from.publicKey);
+	var balanceFROM = await getWalletBalance(from.publicKey);
+	console.log(`FROM Wallet balance: ${balanceFROM / LAMPORTS_PER_SOL} SOL`);
+
 	// Other things to try:
-	// 1) Form array from userSecretKey
+	// 1) Form array from userSecretKeys
 	// const from = Keypair.fromSecretKey(Uint8Array.from(userSecretKey));
 	// 2) Make a new Keypair (starts with 0 SOL)
 	// const from = Keypair.generate();
@@ -63,27 +65,27 @@ const transferSol = async () => {
 		SystemProgram.transfer({
 			fromPubkey: from.publicKey,
 			toPubkey: to.publicKey,
-			lamports: LAMPORTS_PER_SOL / 100,
+			lamports: Number(balanceFROM / 2),
 		})
 	);
 
 	// Sign transaction
 	var signature = await sendAndConfirmTransaction(connection, transaction, [from]);
 	console.log("Signature is ", signature);
-	console.log("TO balance : ");
-	getWalletBalance(to.publicKey);
+	console.log("TO balance : " + (await getWalletBalance(to.publicKey)));
 };
 
-const getWalletBalance = async (thePublicKey) => {
+async function getWalletBalance(thePublicKey) {
 	try {
 		// Connect to the Devnet
 		const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
-		const walletBalance = await connection.getBalance(thePublicKey);
-		console.log(`Wallet balance: ${parseInt(walletBalance) / LAMPORTS_PER_SOL} SOL`);
+		const walletBalance = await connection.getBalance(new PublicKey(thePublicKey));
+
+		return walletBalance;
 	} catch (err) {
 		console.log(err);
 	}
-};
+}
 
 transferSol();
