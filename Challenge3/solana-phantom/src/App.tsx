@@ -81,13 +81,12 @@ function App() {
 	};
 
 	const disconnectWallet = async () => {
-		if (walletKey) {
+		if (walletKey != undefined) {
 			try {
-				const response = await walletKey.disconnect();
-
-				<p> disconneted from wallet : {publicKey} </p>;
+				const response = walletKey.disconnect;
+				setWalletKey(undefined);
 			} catch (err) {
-				console.log("disconnecting went wrong");
+				console.log(err);
 			}
 		} else {
 			<p>Something went wrong - no wallet Key</p>;
@@ -101,7 +100,7 @@ function App() {
 				{walletKey && (
 					<button
 						style={{
-							//marginLeft: "80%",
+							marginLeft: "80%",
 							fontSize: "12px",
 							padding: "15px",
 							fontWeight: "bold",
