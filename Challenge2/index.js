@@ -30,10 +30,14 @@ const transferSol = async () => {
 
 	// Get Keypair from Secret Key
 	var from = Keypair.fromSecretKey(DEMO_FROM_SECRET_KEY);
-	console.log("FROM balance : ");
+
+	// Aidrop 2 SOL to Sender wallet
+	console.log("Airdopping some SOL to Sender wallet!");
+	const fromAirDropSignature = await connection.requestAirdrop(new PublicKey(from.publicKey), 2 * LAMPORTS_PER_SOL);
+
 	var balanceFROM = await getWalletBalance(from.publicKey);
 	console.log(`FROM Wallet balance: ${balanceFROM / LAMPORTS_PER_SOL} SOL`);
-
+	var balanceToTransfer = BigInt(balanceFROM) / BigInt(2);
 	// Other things to try:
 	// 1) Form array from userSecretKeys
 	// const from = Keypair.fromSecretKey(Uint8Array.from(userSecretKey));
@@ -42,10 +46,6 @@ const transferSol = async () => {
 
 	// Generate another Keypair (account we'll be sending to)
 	const to = Keypair.generate();
-
-	// Aidrop 2 SOL to Sender wallet
-	console.log("Airdopping some SOL to Sender wallet!");
-	const fromAirDropSignature = await connection.requestAirdrop(new PublicKey(from.publicKey), 2 * LAMPORTS_PER_SOL);
 
 	// Latest blockhash (unique identifer of the block) of the cluster
 	let latestBlockHash = await connection.getLatestBlockhash();
@@ -65,14 +65,15 @@ const transferSol = async () => {
 		SystemProgram.transfer({
 			fromPubkey: from.publicKey,
 			toPubkey: to.publicKey,
-			lamports: Number(balanceFROM / 2),
+			lamports: balanceToTransfer,
 		})
 	);
 
 	// Sign transaction
 	var signature = await sendAndConfirmTransaction(connection, transaction, [from]);
 	console.log("Signature is ", signature);
-	console.log("TO balance : " + (await getWalletBalance(to.publicKey)));
+	var balanceTO = await getWalletBalance(to.publicKey);
+	console.log(`TO balance :   ${balanceTO / LAMPORTS_PER_SOL}  SOL`);
 };
 
 async function getWalletBalance(thePublicKey) {
