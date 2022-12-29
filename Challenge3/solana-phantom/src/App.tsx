@@ -1,6 +1,3 @@
-// import functionalities
-import React from "react";
-import logo from "./logo.svg";
 import "./App.css";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { useEffect, useState } from "react";
@@ -46,7 +43,6 @@ function App() {
 	// create state variable for the wallet key
 	const [walletKey, setWalletKey] = useState<PhantomProvider | undefined>(undefined);
 
-	const [publicKey, setPublicKey] = useState("Not connected!");
 	// this is the function that runs whenever the component updates (e.g. render, refresh)
 	useEffect(() => {
 		const provider = getProvider();
@@ -73,7 +69,6 @@ function App() {
 				console.log("wallet account ", response.publicKey.toString());
 				// update walletKey to be the public key
 				setWalletKey(response.publicKey.toString());
-				setPublicKey(response.publicKey.toString());
 			} catch (err) {
 				// { code: 4001, message: 'User rejected the request.' }
 			}
@@ -81,9 +76,12 @@ function App() {
 	};
 
 	const disconnectWallet = async () => {
-		if (walletKey != undefined) {
+		if (walletKey !== undefined) {
 			try {
-				const response = walletKey.disconnect;
+				const response = walletKey.disconnect; // its a Promise<void> or an error;
+				if (response !== undefined) {
+					throw new Error("Something went wrong when disconnecting");
+				}
 				setWalletKey(undefined);
 			} catch (err) {
 				console.log(err);
@@ -105,7 +103,7 @@ function App() {
 							padding: "15px",
 							fontWeight: "bold",
 							borderRadius: "5px",
-							alignSelf: "right",
+							alignSelf: "center",
 							color: "red",
 						}}
 						onClick={disconnectWallet}
