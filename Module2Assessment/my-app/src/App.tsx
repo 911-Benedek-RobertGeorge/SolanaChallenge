@@ -1,6 +1,13 @@
 import "./App.css";
-import { PublicKey, Transaction } from "@solana/web3.js";
+// added some imports
+import { Connection, PublicKey, Keypair, Transaction, SystemProgram, sendAndConfirmTransaction, clusterApiUrl } from "@solana/web3.js";
+
 import { useEffect, useState } from "react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+
+// added this too because of an error that i got
+import * as buffer from "buffer";
+window.Buffer = buffer.Buffer;
 
 // create types
 type DisplayEncoding = "utf8" | "hex";
@@ -28,6 +35,7 @@ interface PhantomProvider {
 /**
  * @description gets Phantom provider, if it exists
  */
+
 const getProvider = (): PhantomProvider | undefined => {
 	if ("solana" in window) {
 		// @ts-ignore
@@ -43,6 +51,14 @@ function App() {
 	// create state variable for the wallet key
 	const [walletKey, setWalletKey] = useState<PhantomProvider | undefined>(undefined);
 
+	// NEW
+	// create state variable for the wallet that is going to be created when the button is pressed
+	const [newWallet, setNewWallet] = useState<Keypair | undefined>(undefined);
+	// im going to set this variable this after the airdrop is finished
+	const [airdropCompleted, setairDropCompleted] = useState<boolean>(false);
+	// This will be set to the link of the transaction on solana explorer
+	const [link, setLink] = useState<string>("");
+
 	// this is the function that runs whenever the component updates (e.g. render, refresh)
 	useEffect(() => {
 		const provider = getProvider();
@@ -52,6 +68,37 @@ function App() {
 		else setProvider(undefined);
 	}, []);
 
+	// this will be called even at the first render
+	// only call airdropSol function after the wallet has been modified
+	useEffect(() => {
+		airdropSol().catch(console.error);
+	}, [newWallet]);
+
+	/**
+	 * @description  This function is used to airdrop 2 sol into the newly created wallet
+	 * It is called after the wallet variable has been changed (useEfect)
+	 */
+	const airdropSol = async () => {
+		if (newWallet !== undefined) {
+			try {
+				const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+				const airDropSignature = await connection.requestAirdrop(new PublicKey(newWallet.publicKey), 2 * LAMPORTS_PER_SOL);
+				let latestBlockHash = await connection.getLatestBlockhash();
+
+				await connection.confirmTransaction({
+					blockhash: latestBlockHash.blockhash,
+					lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+					signature: airDropSignature,
+				});
+				// set this variable so we know that step 1 has been succesfully finished so now we chan show the connect button
+				setairDropCompleted(true);
+				console.log("Airdrop completed for the new account");
+			} catch (err) {
+				alert(err);
+			}
+		}
+	};
+
 	/**
 	 * @description prompts user to connect wallet if it exists.
 	 * This function is called when the connect wallet button is clicked
@@ -59,7 +106,7 @@ function App() {
 	const connectWallet = async () => {
 		// @ts-ignore
 		const { solana } = window;
-
+		console.log(newWallet);
 		// checks if phantom wallet exists
 		if (solana) {
 			try {
@@ -75,7 +122,8 @@ function App() {
 		}
 	};
 
-	const disconnectWallet = async () => {
+	// This function is can used after a connection to the phantom wallet by pressing the disconnect button
+	const disconnectWallet = () => {
 		if (walletKey !== undefined) {
 			try {
 				const response = walletKey.disconnect; // its a Promise<void> or an error;
@@ -91,10 +139,48 @@ function App() {
 		}
 	};
 
+	// the easiest way would be to just put airdrop sol body here
+	// but i think is better practice to devide this two fucntions
+	const createAccount = () => {
+		setNewWallet(Keypair.generate());
+		console.log(newWallet);
+	};
+
+	/**
+	 * @description Transfers 1.995 sol from the newly created wallet to the phantom wallet which has been connected at step 2
+	 * This function is used when the Transfer to new wallet button is pressed
+	 */
+	const transferSOL = async () => {
+		console.log("Started transfer");
+		const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+		try {
+			if (newWallet !== undefined && walletKey) {
+				var phantomWalletKey = new PublicKey(walletKey);
+				var transaction = new Transaction().add(
+					SystemProgram.transfer({
+						fromPubkey: newWallet.publicKey,
+						toPubkey: phantomWalletKey,
+						lamports: (2 - 0.005) * LAMPORTS_PER_SOL, // we need some sol for fees thats why i dont send exactly 2 sol
+					})
+				);
+
+				// Sign transaction
+				var signature = await sendAndConfirmTransaction(connection, transaction, [newWallet]);
+				console.log("Signature is ", signature);
+
+				setLink("https://explorer.solana.com/tx/" + signature + "?cluster=devnet");
+			} else {
+				alert("One of the wallets has not been initialized");
+			}
+		} catch (err) {
+			alert(err);
+		}
+	};
+
 	// HTML code for the app
 	return (
 		<div className="App">
-			<div className="menu-bar" style={{ display: "flex", background: "grey" }}>
+			<div className="menu-bar" style={{ display: "flex" }}>
 				{walletKey && (
 					<button
 						style={{
@@ -114,8 +200,23 @@ function App() {
 			</div>
 
 			<header className="App-header">
-				<h2>Connect to Phantom Wallet</h2>
-				{provider && !walletKey && (
+				{!airdropCompleted && (
+					<button
+						style={{
+							fontSize: "16px",
+							padding: "15px",
+							fontWeight: "bold",
+							borderRadius: "5px",
+							alignSelf: "center",
+							backgroundColor: "grey",
+						}}
+						onClick={createAccount}
+					>
+						Create a new Solana account
+					</button>
+				)}
+				{newWallet && !airdropCompleted && <h4>Requesting 2 SOL. It might take a minute...</h4>}
+				{provider && !walletKey && airdropCompleted && <h2>Connect to Phantom Wallet</h2> && (
 					<button
 						style={{
 							fontSize: "16px",
@@ -126,11 +227,30 @@ function App() {
 						}}
 						onClick={connectWallet}
 					>
-						Connect Wallet
+						Connect to Phantom Wallet
 					</button>
 				)}
-				{provider && walletKey && <p>Connected account : {walletKey.toString()} </p>}
 
+				{provider && walletKey && <p>Connected to account : {walletKey.toString()} </p> && (
+					<button
+						style={{
+							fontSize: "16px",
+							padding: "15px",
+							fontWeight: "bold",
+							borderRadius: "5px",
+							alignSelf: "center",
+							backgroundColor: "#645f5f",
+						}}
+						onClick={transferSOL}
+					>
+						Transfer to new wallet
+					</button>
+				)}
+				{walletKey && link !== "" && (
+					<a href={link} target="_blank" style={{ color: "white" }}>
+						Check your tranzaction here!
+					</a>
+				)}
 				{!provider && (
 					<p>
 						No provider found. Install <a href="https://phantom.app/">Phantom Browser extension</a>
