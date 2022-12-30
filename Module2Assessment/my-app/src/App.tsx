@@ -7,6 +7,7 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 // added this too because of an error that i got
 import * as buffer from "buffer";
+import { wait } from "@testing-library/user-event/dist/utils";
 window.Buffer = buffer.Buffer;
 
 // create types
@@ -72,6 +73,9 @@ function App() {
 	// only call airdropSol function after the wallet has been modified
 	useEffect(() => {
 		airdropSol().catch(console.error);
+		setairDropCompleted(false);
+		wait(1000);
+		airdropSol().catch(console.error); // some more sol for fees
 	}, [newWallet]);
 
 	/**
@@ -82,8 +86,16 @@ function App() {
 		if (newWallet !== undefined) {
 			try {
 				const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
-				const airDropSignature = await connection.requestAirdrop(new PublicKey(newWallet.publicKey), 2 * LAMPORTS_PER_SOL);
+				var airDropSignature = await connection.requestAirdrop(new PublicKey(newWallet.publicKey), 2 * LAMPORTS_PER_SOL);
 				let latestBlockHash = await connection.getLatestBlockhash();
+
+				await connection.confirmTransaction({
+					blockhash: latestBlockHash.blockhash,
+					lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+					signature: airDropSignature,
+				});
+				airDropSignature = await connection.requestAirdrop(new PublicKey(newWallet.publicKey), 2 * LAMPORTS_PER_SOL);
+				latestBlockHash = await connection.getLatestBlockhash();
 
 				await connection.confirmTransaction({
 					blockhash: latestBlockHash.blockhash,
@@ -160,7 +172,7 @@ function App() {
 					SystemProgram.transfer({
 						fromPubkey: newWallet.publicKey,
 						toPubkey: phantomWalletKey,
-						lamports: (2 - 0.005) * LAMPORTS_PER_SOL, // we need some sol for fees thats why i dont send exactly 2 sol
+						lamports: 2 * LAMPORTS_PER_SOL, // we need some sol for fees thats why i dont send exactly 2 sol
 					})
 				);
 
