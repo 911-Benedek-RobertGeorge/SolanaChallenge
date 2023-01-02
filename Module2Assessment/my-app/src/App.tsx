@@ -73,9 +73,9 @@ function App() {
 	// only call airdropSol function after the wallet has been modified
 	useEffect(() => {
 		airdropSol().catch(console.error);
-		setairDropCompleted(false);
-		wait(1000);
-		airdropSol().catch(console.error); // some more sol for fees
+		//setairDropCompleted(false);
+		//wait(1000);
+		//airdropSol().catch(console.error); // some more sol for fees
 	}, [newWallet]);
 
 	/**
@@ -94,14 +94,7 @@ function App() {
 					lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
 					signature: airDropSignature,
 				});
-				airDropSignature = await connection.requestAirdrop(new PublicKey(newWallet.publicKey), 2 * LAMPORTS_PER_SOL);
-				latestBlockHash = await connection.getLatestBlockhash();
 
-				await connection.confirmTransaction({
-					blockhash: latestBlockHash.blockhash,
-					lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
-					signature: airDropSignature,
-				});
 				// set this variable so we know that step 1 has been succesfully finished so now we chan show the connect button
 				setairDropCompleted(true);
 				console.log("Airdrop completed for the new account");
@@ -163,6 +156,8 @@ function App() {
 	 * This function is used when the Transfer to new wallet button is pressed
 	 */
 	const transferSOL = async () => {
+		await airdropSol();
+
 		console.log("Started transfer");
 		const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 		try {
